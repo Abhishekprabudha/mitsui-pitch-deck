@@ -1,0 +1,50 @@
+name: Refresh deck PPTX
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-refresh-pptx:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build deck
+        run: node build_deck.js
+
+      - name: Upload PPTX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-pptx
+          path: output/*.pptx
+          if-no-files-found: error
+
+      - name: Commit refreshed PPTX if changed
+        run: |
+          if git diff --quiet -- output/*.pptx; then
+            echo "No PPTX changes detected."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/*.pptx
+          git commit -m "chore: refresh generated PPTX"
+          git push
